@@ -202,3 +202,36 @@ impl<T> BusManager<crate::NullMutex<T>> {
         }
     }
 }
+
+impl<M: crate::BusMutex> BusManager<M> {
+    /// Acquire an [`CanProxy`] for this bus.
+    ///
+    /// [`CanProxy`]: ./struct.I2cProxy.html
+    ///
+    /// The returned proxy object can then be used for accessing the bus by e.g. a driver:
+    ///
+    /// ```
+    /// # use embedded_hal::blocking::can;
+    /// # use embedded_hal::can::Frame;
+    /// # struct MyDevice<T>(T);
+    /// # impl<T: can:Can> MyDevice<T> {
+    /// #     pub fn new(t: T) -> Self { MyDevice(t) }
+    /// #     pub fn do_something_on_the_bus(&mut self) {
+    /// #         self.0.transmit(frame: &Frame);
+    /// #     }
+    /// # }
+    /// #
+    /// # fn _example(can: impl can) {
+    /// let bus = shared_bus::BusManagerSimple::new(can);
+    ///
+    /// let mut proxy1 = bus.acquire_can();
+    /// let mut my_device = MyDevice::new(bus.acquire_can());
+    ///
+    /// proxy1.transmit(Frame::new(0, [0; 3]));
+    /// my_device.do_something_on_the_bus();
+    /// # }
+    /// ```
+    pub fn acquire_can<'a>(&'a self) -> crate::CanProxy<'a, M> {
+        crate::CanProxy { mutex: &self.mutex }
+    }
+}

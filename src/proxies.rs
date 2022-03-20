@@ -1,6 +1,7 @@
 use embedded_hal::adc;
 use embedded_hal::blocking::i2c;
 use embedded_hal::blocking::spi;
+use embedded_hal::blocking::can;
 
 /// Proxy type for I2C bus sharing.
 ///
@@ -149,4 +150,42 @@ where
         self.mutex
             .lock(|bus| nb::block!(bus.read(pin)).map_err(nb::Error::Other))
     }
+}
+
+/// Proxy type for CAN bus sharing.
+///
+/// The `CanProxy` implements all (blocking) CAN traits so it can be passed to drivers instead of
+/// the bus instance.  Internally, it holds reference to the bus via a mutex, ensuring that all
+/// accesses are strictly synchronized.
+///
+/// A `CanProxy` is created by calling [`BusManager::acquire_can()`][acquire_can].
+///
+/// [acquire_can]: ./struct.BusManager.html#method.acquire_can
+
+#[derive(Debug)]
+pub struct CanProxy<'a, M> {
+    pub(crate) mutex: &'a M,
+}
+
+impl<'a, M: crate::BusMutex> Clone for CanProxy<'a, M> {
+    fn clone(&self) -> Self {
+        Self { mutex: &self.mutex }
+    }
+}
+
+impl<'a, M: crate::BusMutex> can::Can for CanProxy<'a, M>
+where
+    M::Bus: can::Can,
+{
+    type Error = <M::Bus as can::Can>::Error;
+
+    fn transmit(&mut self, frame: &Self::Frame) -> Result<(), Self::Error> {
+        self.mutex.lock(|bus| bus.transmit(frame))
+    }
+
+    fn receive(&mut self) -> Result<Self::Frame, Self::Error> {
+        self.mutex.lock(|bus| bus.receive())
+    }
+
+    type Frame = <M::Bus as embedded_hal::blocking::can::Can>::Frame;
 }

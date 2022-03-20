@@ -146,6 +146,7 @@ pub use mutex::XtensaMutex;
 pub use proxies::AdcProxy;
 pub use proxies::I2cProxy;
 pub use proxies::SpiProxy;
+pub use proxies::CanProxy;
 
 #[cfg(feature = "cortex-m")]
 pub use mutex::AtomicCheckMutex;
